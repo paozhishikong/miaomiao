@@ -3,6 +3,15 @@ import App from './App.vue'
 import router from './routers'
 import store from './store'
 
+import axios from 'axios'
+
+Vue.prototype.axios = axios
+// setWH是过滤器的名字，把传进来的url，通过正则匹配的方式，获取到w，h。注意‘.’是特殊字符，需要使用‘\’放置转义
+// arg是要替换的内容，也就是宽高
+Vue.filter('setWH', (url, arg) => {
+  return url.replace(/w\.h/, arg)
+})
+
 Vue.config.productionTip = false
 
 new Vue({

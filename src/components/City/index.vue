@@ -4,80 +4,21 @@
       <div class="city_hot">
         <h2>热门城市</h2>
         <ul class="clearfix">
-          <li>上海</li>
-          <li>北京</li>
-          <li>上海</li>
-          <li>北京</li>
-          <li>上海</li>
-          <li>北京</li>
-          <li>上海</li>
-          <li>北京</li>
+          <li v-for="item in hotList" :key="item.id">{{item.nm}}</li>
         </ul>
       </div>
-      <div class="city_sort">
-        <div>
-          <h2>A</h2>
+      <div class="city_sort" ref="city_sort">
+        <div v-for="item in cityList" :key="item.index">
+          <h2>{{item.index}}</h2>
           <ul>
-            <li>阿拉善盟</li>
-            <li>鞍山</li>
-            <li>安庆</li>
-            <li>安阳</li>
-          </ul>
-        </div>
-        <div>
-          <h2>B</h2>
-          <ul>
-            <li>北京</li>
-            <li>保定</li>
-            <li>蚌埠</li>
-            <li>包头</li>
-          </ul>
-        </div>
-        <div>
-          <h2>A</h2>
-          <ul>
-            <li>阿拉善盟</li>
-            <li>鞍山</li>
-            <li>安庆</li>
-            <li>安阳</li>
-          </ul>
-        </div>
-        <div>
-          <h2>B</h2>
-          <ul>
-            <li>北京</li>
-            <li>保定</li>
-            <li>蚌埠</li>
-            <li>包头</li>
-          </ul>
-        </div>
-        <div>
-          <h2>A</h2>
-          <ul>
-            <li>阿拉善盟</li>
-            <li>鞍山</li>
-            <li>安庆</li>
-            <li>安阳</li>
-          </ul>
-        </div>
-        <div>
-          <h2>B</h2>
-          <ul>
-            <li>北京</li>
-            <li>保定</li>
-            <li>蚌埠</li>
-            <li>包头</li>
+            <li v-for="itemList in item.list" :key="itemList.id">{{itemList.nm}}</li>
           </ul>
         </div>
       </div>
     </div>
     <div class="city_index">
       <ul>
-        <li>A</li>
-        <li>B</li>
-        <li>C</li>
-        <li>D</li>
-        <li>E</li>
+        <li v-for="(item,index) in cityList" :key="item.index" @touchstart="handleToIndex(index)">{{item.index}}</li>
       </ul>
     </div>
   </div>
@@ -85,7 +26,79 @@
 
 <script>
 export default {
-  name: 'City'
+  name: 'City',
+  data () { // 在data中定义响应式数据，把经过处理后取得的cityList与hotList渲染到页面上去
+    return {
+      cityList: [],
+      hotList: []
+    }
+  },
+  mounted () {
+    this.axios.get('/api/cityList').then((res) => {
+      var msg = res.data.msg // 判断数据请求是否成功
+      if (msg === 'ok') { // 如果数据请求成功，再进行下一步操作
+        var cities = res.data.data.cities // data是城市列表信息
+        // 数据改造的理想格式：[{index:'A',list:[{nm:'阿城'，id:123}]}]
+        var { cityList, hotList } = this.formatCityList(cities) // 把经过处理后的城市列表以及热门城市列表取出来，使用对象的结构法
+        this.cityList = cityList
+        this.hotList = hotList
+      }
+    })
+  },
+  methods: {
+    // 定义一个函数，专门用来处理城市的数据格式
+    formatCityList (cities) {
+      var cityList = [] // cityList是城市的分类
+      var hotList = [] // 热门城市集
+
+      for (var k = 0; k < cities.length; k++) {
+        if (cities[k].isHot === 1) {
+          hotList.push(cities[k])
+        }
+      }
+
+      for (var i = 0; i < cities.length; i++) {
+        var firstLetter = cities[i].py.substring(0, 1).toUpperCase() // 各个城市的拼音首字母
+        if (toCom(firstLetter)) { // 新添加index
+          cityList.push({ index: firstLetter, list: [{ nm: cities[i].nm, id: cities[i].id }] })
+          // 新添加到cityList中的元素格式如上，有首字母，城市名以及城市id
+        } else { // 累加到已有index中
+          for (var j = 0; j < cityList.length; j++) {
+            if (cityList[j].index === firstLetter) {
+              cityList[j].list.push({ nm: cities[i].nm, id: cities[i].id })
+            }
+          }
+        }
+      }
+      // 对cityList按字母顺序进行排序
+      cityList.sort((n1, n2) => {
+        if (n1.index > n2.index) {
+          return 1
+        } else {
+          return -1
+        }
+      })
+
+      function toCom (firstLetter) { // 该函数用于判断城市有没有存在于结果集当中
+        for (var i = 0; i < cityList.length; i++) {
+          if (cityList[i].index === firstLetter) {
+            return false
+          }
+        }
+        return true
+      }
+
+      return { // 以对象的形式返回城市列表以及热门城市列表
+        cityList,
+        hotList
+      }
+    },
+    handleToIndex (index) { // 使用$ref方法获得city_sort
+      var h2 = this.$refs.city_sort.getElementsByTagName('h2')
+      // city_sort的父元素的滚动距离如下
+      this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop
+    }
+  }
 }
 </script>
 
