@@ -1,20 +1,27 @@
 <template>
   <div class="city_body">
     <div class="city_list">
-      <div class="city_hot">
-        <h2>热门城市</h2>
-        <ul class="clearfix">
-          <li v-for="item in hotList" :key="item.id">{{item.nm}}</li>
-        </ul>
-      </div>
-      <div class="city_sort" ref="city_sort">
-        <div v-for="item in cityList" :key="item.index">
-          <h2>{{item.index}}</h2>
-          <ul>
-            <li v-for="itemList in item.list" :key="itemList.id">{{itemList.nm}}</li>
-          </ul>
+      <Loading v-if="isLoading"/>
+      <Scroller v-else ref="city_List">
+        <div>
+          <div class="city_hot">
+            <h2>热门城市</h2>
+            <ul class="clearfix">
+              <li v-for="item in hotList" :key="item.id" @tap="handleToCity(item.nm,item.id)">{{item.nm}}</li>
+            </ul>
+          </div>
+          <div class="city_sort" ref="city_sort">
+            <div v-for="item in cityList" :key="item.index">
+              <h2>{{item.index}}</h2>
+              <ul>
+                <li v-for="itemList in item.list" :key="itemList.id" @tap="handleToCity(itemList.nm,itemList.id)">
+                  {{itemList.nm}}
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
-      </div>
+      </Scroller>
     </div>
     <div class="city_index">
       <ul>
@@ -30,20 +37,33 @@ export default {
   data () { // 在data中定义响应式数据，把经过处理后取得的cityList与hotList渲染到页面上去
     return {
       cityList: [],
-      hotList: []
+      hotList: [],
+      isLoading: true
     }
   },
   mounted () {
-    this.axios.get('/api/cityList').then((res) => {
-      var msg = res.data.msg // 判断数据请求是否成功
-      if (msg === 'ok') { // 如果数据请求成功，再进行下一步操作
-        var cities = res.data.data.cities // data是城市列表信息
-        // 数据改造的理想格式：[{index:'A',list:[{nm:'阿城'，id:123}]}]
-        var { cityList, hotList } = this.formatCityList(cities) // 把经过处理后的城市列表以及热门城市列表取出来，使用对象的结构法
-        this.cityList = cityList
-        this.hotList = hotList
-      }
-    })
+    let cityList = window.localStorage.getItem('cityList')
+    let hotList = window.localStorage.getItem('hotList')
+
+    if (cityList && hotList) {
+      this.cityList = JSON.parse(cityList)
+      this.hotList = JSON.parse(hotList)
+      this.isLoading = false
+    } else {
+      this.axios.get('/api/cityList').then((res) => {
+        var msg = res.data.msg // 判断数据请求是否成功
+        if (msg === 'ok') { // 如果数据请求成功，再进行下一步操作
+          this.isLoading = false
+          var cities = res.data.data.cities // data是城市列表信息
+          // 数据改造的理想格式：[{index:'A',list:[{nm:'阿城'，id:123}]}]
+          var { cityList, hotList } = this.formatCityList(cities) // 把经过处理后的城市列表以及热门城市列表取出来，使用对象的结构法
+          this.cityList = cityList
+          this.hotList = hotList
+          window.localStorage.setItem('cityList', JSON.stringify(cityList))
+          window.localStorage.setItem('hotList', JSON.stringify(hotList))
+        }
+      })
+    }
   },
   methods: {
     // 定义一个函数，专门用来处理城市的数据格式
@@ -96,7 +116,15 @@ export default {
     handleToIndex (index) { // 使用$ref方法获得city_sort
       var h2 = this.$refs.city_sort.getElementsByTagName('h2')
       // city_sort的父元素的滚动距离如下
-      this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop
+      // this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop
+      // 在父组件中调用子组件的方法，实现点击跳转的功能
+      this.$refs.city_List.toScrollTop(-h2[index].offsetTop)
+    },
+    handleToCity (nm, id) {
+      this.$store.commit('city/CITY_INFO', { nm, id })
+      window.localStorage.setItem('nowNm', nm)
+      window.localStorage.setItem('nowID', id)
+      this.$router.push('movie/nowPlaying')
     }
   }
 }
